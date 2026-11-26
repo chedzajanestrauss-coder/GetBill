@@ -1,48 +1,57 @@
-
-name: Build Android APK
+name: Build Capacitor 8 APK
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
+    timeout-minutes: 15
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout files
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
 
-      - name: Setup Java
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 21
+          distribution: 'temurin'
+          java-version: '21'
 
-      - name: Install dependencies
-        run: npm install
+      - name: Initialize Capacitor 8 Project
+        run: |
+          mkdir cap_build
+          cd cap_build
+          npm init -y
+          npm install @capacitor/core@^8.0.0 @capacitor/cli@^8.0.0 @capacitor/android@^8.0.0
+          npm install -D @capacitor/assets
+          npx cap init "GetBill" com.myapp.html --web-dir www
+          mkdir www
+          cp ../*.html ../*.css ../*.js ../*.png ../*.jpg www/ 2>/dev/null || true
 
-      - name: Add Android platform
-        run: npx cap add android
-
-      - name: Sync Capacitor
-        run: npx cap sync android
+      - name: Add Android Platform & Generate Logo
+        run: |
+          cd cap_build
+          npx cap add android
+          mkdir -p assets
+          cp ../icon.png assets/icon.png
+          npx capacitor-assets generate --android
 
       - name: Build Android APK
         run: |
-          cd android
+          cd cap_build/android
           chmod +x gradlew
           ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GetBill-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: my-capacitor-apk
+          path: cap_build/android/app/build/outputs/apk/debug/app-debug.apk
+
